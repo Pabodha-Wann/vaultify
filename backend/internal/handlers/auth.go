@@ -4,20 +4,21 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 
 	"golang.org/x/oauth2"
 
+	"github.com/Pabodha-Wann/vaultify/internal/auth"
 	"github.com/Pabodha-Wann/vaultify/internal/config"
 	"github.com/coreos/go-oidc/v3/oidc"
 )
 
 type AuthHandler struct {
-	oauthConfig oauth2.Config
-	verifier    *oidc.IDTokenVerifier
+	oauthConfig   oauth2.Config
+	verifier      *oidc.IDTokenVerifier
+	sessionSecret string
 }
 
 type UserClaims struct {
@@ -47,8 +48,9 @@ func NewAuthhandler(ctx context.Context, cfg config.Config) (*AuthHandler, error
 	}
 
 	return &AuthHandler{
-		oauthConfig: oauthConfig,
-		verifier:    verifier,
+		oauthConfig:   oauthConfig,
+		verifier:      verifier,
+		sessionSecret: cfg.SessionSecret,
 	}, nil
 
 }
@@ -110,6 +112,14 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Verified login:sub=%s email=%s username=%s", claims.Sub, claims.Email, claims.Username)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(claims)
+	// w.Header().Set("Content-Type", "application/json")
+	// json.NewEncoder(w).Encode(claims)
+
+	if err := auth.Createsession(w, h.sessionSecret, claims.Sub, claims.Username); err != nil {
+		log.Println("failed to create session:", err)
+		http.Error(w, "failed to create session", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/dashboard", http.StatusFound)
 }
