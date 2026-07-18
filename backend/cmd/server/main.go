@@ -8,6 +8,8 @@ import (
 	"github.com/Pabodha-Wann/vaultify/internal/config"
 	"github.com/Pabodha-Wann/vaultify/internal/database"
 	"github.com/Pabodha-Wann/vaultify/internal/handlers"
+	"github.com/Pabodha-Wann/vaultify/internal/repository"
+	"github.com/Pabodha-Wann/vaultify/internal/services"
 
 	mymiddleware "github.com/Pabodha-Wann/vaultify/internal/middleware"
 	"github.com/go-chi/chi/v5"
@@ -25,7 +27,10 @@ func main() {
 	}
 	log.Println("Database connected and migrated")
 
-	authHandler, err := handlers.NewAuthhandler(context.Background(), cfg, db)
+	userRepo := repository.NewUserRepository(db)
+	userService := services.NewUserService(userRepo)
+
+	authHandler, err := handlers.NewAuthhandler(context.Background(), cfg, userService)
 
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
