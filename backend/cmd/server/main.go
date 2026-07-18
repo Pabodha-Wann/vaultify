@@ -10,6 +10,7 @@ import (
 	"github.com/Pabodha-Wann/vaultify/internal/handlers"
 	"github.com/Pabodha-Wann/vaultify/internal/repository"
 	"github.com/Pabodha-Wann/vaultify/internal/services"
+	"github.com/Pabodha-Wann/vaultify/internal/storage"
 
 	mymiddleware "github.com/Pabodha-Wann/vaultify/internal/middleware"
 	"github.com/go-chi/chi/v5"
@@ -44,6 +45,18 @@ func main() {
 		protected.Get("/dashboard", handlers.Dashboard)
 
 	})
+
+	s3Storage, err := storage.NewS3Storage(
+		context.Background(),
+		cfg.AWSAccessKeyID,
+		cfg.AWSSecretAccessKey,
+		cfg.AWSRegion,
+		cfg.AWSBucketName,
+	)
+	if err != nil {
+		log.Fatal("failed to connect to S3:", err)
+	}
+	log.Println("S3 storage connected", s3Storage)
 
 	log.Println("Starting server on :8080")
 

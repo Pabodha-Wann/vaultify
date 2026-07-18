@@ -14,6 +14,10 @@ type Config struct {
 	RedirectURL          string
 	SessionSecret        string
 	DatabaseURL          string
+	AWSAccessKeyID       string
+	AWSSecretAccessKey   string
+	AWSRegion            string
+	AWSBucketName        string
 }
 
 func Load() Config {
@@ -28,5 +32,9 @@ func Load() Config {
 		RedirectURL:          os.Getenv("REDIRECT_URL"),
 		SessionSecret:        os.Getenv("SESSION_SECRET"),
 		DatabaseURL:          os.Getenv("DATABASE_URL"),
+		AWSAccessKeyID:       os.Getenv("AWS_ACCESS_KEY_ID"),
+		AWSSecretAccessKey:   os.Getenv("AWS_SECRET_ACCESS_KEY"),
+		AWSRegion:            os.Getenv("AWS_REGION"),
+		AWSBucketName:        os.Getenv("AWS_BUCKET_NAME"),
 	}
 }
