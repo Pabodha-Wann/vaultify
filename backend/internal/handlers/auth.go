@@ -12,25 +12,45 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/Pabodha-Wann/vaultify/internal/config"
+	"github.com/coreos/go-oidc/v3/oidc"
 )
 
 type AuthHandler struct {
 	oauthConfig oauth2.Config
+	verifier    *oidc.IDTokenVerifier
 }
 
-func NewAuthhandler(cfg config.Config) *AuthHandler {
-	return &AuthHandler{
-		oauthConfig: oauth2.Config{
-			ClientID:     cfg.AsgardeoClientID,
-			ClientSecret: cfg.AsgardeoClientSecret,
-			RedirectURL:  cfg.RedirectURL,
-			Scopes:       []string{"openid", "profile", "email"},
-			Endpoint: oauth2.Endpoint{
-				AuthURL:  fmt.Sprintf("https://api.asgardeo.io/t/%s/oauth2/authorize", cfg.AsgardeoOrgName),
-				TokenURL: fmt.Sprintf("https://api.asgardeo.io/t/%s/oauth2/token", cfg.AsgardeoOrgName),
-			},
-		},
+type UserClaims struct {
+	Sub      string `json:"sub"`
+	Email    string `json:"email"`
+	Username string `json:"username"`
+}
+
+func NewAuthhandler(ctx context.Context, cfg config.Config) (*AuthHandler, error) {
+	issuerURL := fmt.Sprintf("https://api.asgardeo.io/t/%s/oauth2/token", cfg.AsgardeoOrgName)
+
+	//Dynamically discover Asgardeo's public signing keys and OIDC configurations
+	provider, err := oidc.NewProvider(ctx, issuerURL)
+
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create oidc provider:%w ", err)
 	}
+
+	verifier := provider.Verifier(&oidc.Config{ClientID: cfg.AsgardeoClientID})
+
+	oauthConfig := oauth2.Config{
+		ClientID:     cfg.AsgardeoClientID,
+		ClientSecret: cfg.AsgardeoClientSecret,
+		RedirectURL:  cfg.RedirectURL,
+		Scopes:       []string{"openid", "profile", "email"},
+		Endpoint:     provider.Endpoint(),
+	}
+
+	return &AuthHandler{
+		oauthConfig: oauthConfig,
+		verifier:    verifier,
+	}, nil
+
 }
 
 // create a random string to protect against CSRF attacks
@@ -48,31 +68,48 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
-	code := r.URL.Query().Get("code")
+	ctx := r.Context()
 
+	// 1. Get the code send back by asgardeo
+	code := r.URL.Query().Get("code")
 	if code == "" {
 		http.Error(w, "missing code", http.StatusBadRequest)
 		return
 	}
 
-	token, err := h.oauthConfig.Exchange(context.Background(), code)
-
+	// 2. Perform the server-to-server exchange to trade the code for tokens
+	token, err := h.oauthConfig.Exchange(ctx, code)
 	if err != nil {
 		log.Println("token exchange failed:", err)
 		http.Error(w, "token exchange failed", http.StatusInternalServerError)
 		return
 	}
 
+	// 3. Extract the raw string of the ID Token (JWT)
 	rawIDToken, ok := token.Extra("id_token").(string)
-
 	if !ok {
 		http.Error(w, "no id_token in response", http.StatusInternalServerError)
 		return
 	}
 
+	//4. Verify the cryptographic signature, issuer, expiration, and audience claims
+	idToken, err := h.verifier.Verify(ctx, rawIDToken)
+	if err != nil {
+		log.Println("id_token verification failed:", err)
+		http.Error(w, "invalid id token", http.StatusUnauthorized)
+		return
+	}
+
+	//safely unpack the verified token into claims
+	var claims UserClaims
+	if err := idToken.Claims(&claims); err != nil {
+		log.Println("failed to parse claims:", err)
+		http.Error(w, "failed to parse claims", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Verified login:sub=%s email=%s username=%s", claims.Sub, claims.Email, claims.Username)
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"access_token": token.AccessToken,
-		"id_token":     rawIDToken,
-	})
+	json.NewEncoder(w).Encode(claims)
 }
