@@ -8,6 +8,7 @@ import (
 	"github.com/Pabodha-Wann/vaultify/internal/config"
 	"github.com/Pabodha-Wann/vaultify/internal/handlers"
 
+	mymiddleware "github.com/Pabodha-Wann/vaultify/internal/middleware"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -18,9 +19,6 @@ func main() {
 	log.Println("Loaded config for org:", cfg.AsgardeoOrgName)
 
 	authHandler, err := handlers.NewAuthhandler(context.Background(), cfg)
-	if err != nil {
-		log.Fatal("failed to create auth handler:", err)
-	}
 
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
@@ -28,6 +26,12 @@ func main() {
 	r.Get("/health", handlers.HealthHandler)
 	r.Get("/login", authHandler.Login)
 	r.Get("/auth/callback", authHandler.Callback)
+
+	r.Group(func(protected chi.Router) {
+		protected.Use(mymiddleware.RequireAuth(cfg.SessionSecret))
+		protected.Get("/dashboard", handlers.Dashboard)
+
+	})
 
 	log.Println("Starting server on :8080")
 
