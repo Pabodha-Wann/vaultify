@@ -9,9 +9,11 @@ import (
 	"net/http"
 
 	"golang.org/x/oauth2"
+	"gorm.io/gorm"
 
 	"github.com/Pabodha-Wann/vaultify/internal/auth"
 	"github.com/Pabodha-Wann/vaultify/internal/config"
+	"github.com/Pabodha-Wann/vaultify/internal/models"
 	"github.com/coreos/go-oidc/v3/oidc"
 )
 
@@ -19,6 +21,7 @@ type AuthHandler struct {
 	oauthConfig   oauth2.Config
 	verifier      *oidc.IDTokenVerifier
 	sessionSecret string
+	db            *gorm.DB
 }
 
 type UserClaims struct {
@@ -27,7 +30,7 @@ type UserClaims struct {
 	Username string `json:"username"`
 }
 
-func NewAuthhandler(ctx context.Context, cfg config.Config) (*AuthHandler, error) {
+func NewAuthhandler(ctx context.Context, cfg config.Config, db *gorm.DB) (*AuthHandler, error) {
 	issuerURL := fmt.Sprintf("https://api.asgardeo.io/t/%s/oauth2/token", cfg.AsgardeoOrgName)
 
 	//Dynamically discover Asgardeo's public signing keys and OIDC configurations
@@ -51,6 +54,7 @@ func NewAuthhandler(ctx context.Context, cfg config.Config) (*AuthHandler, error
 		oauthConfig:   oauthConfig,
 		verifier:      verifier,
 		sessionSecret: cfg.SessionSecret,
+		db:            db,
 	}, nil
 
 }
@@ -111,6 +115,14 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("Verified login:sub=%s email=%s username=%s", claims.Sub, claims.Email, claims.Username)
+
+	//saving / finding the user
+	user := models.User{Sub: claims.Sub, Username: claims.Username}
+	if err := h.db.Where("sub=?", claims.Sub).FirstOrCreate(&user).Error; err != nil {
+		log.Println("failed to find/create user:", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
 
 	// w.Header().Set("Content-Type", "application/json")
 	// json.NewEncoder(w).Encode(claims)

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/Pabodha-Wann/vaultify/internal/config"
+	"github.com/Pabodha-Wann/vaultify/internal/database"
 	"github.com/Pabodha-Wann/vaultify/internal/handlers"
 
 	mymiddleware "github.com/Pabodha-Wann/vaultify/internal/middleware"
@@ -18,7 +19,13 @@ func main() {
 	cfg := config.Load()
 	log.Println("Loaded config for org:", cfg.AsgardeoOrgName)
 
-	authHandler, err := handlers.NewAuthhandler(context.Background(), cfg)
+	db, err := database.Connect(cfg.DatabaseURL)
+	if err != nil {
+		log.Fatal("failed to connect to database:", err)
+	}
+	log.Println("Database connected and migrated")
+
+	authHandler, err := handlers.NewAuthhandler(context.Background(), cfg, db)
 
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)

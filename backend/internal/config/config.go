@@ -13,6 +13,7 @@ type Config struct {
 	AsgardeoOrgName      string
 	RedirectURL          string
 	SessionSecret        string
+	DatabaseURL          string
 }
 
 func Load() Config {
@@ -26,5 +27,6 @@ func Load() Config {
 		AsgardeoOrgName:      os.Getenv("ASGARDEO_ORG_NAME"),
 		RedirectURL:          os.Getenv("REDIRECT_URL"),
 		SessionSecret:        os.Getenv("SESSION_SECRET"),
+		DatabaseURL:          os.Getenv("DATABASE_URL"),
 	}
 }
