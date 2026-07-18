@@ -14,7 +14,7 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	}
 
 	//Auomigrate by looking at sruct definitions
-	if err := db.AutoMigrate(&models.User{}); err != nil {
+	if err := db.AutoMigrate(&models.User{}, &models.File{}, &models.Folder{}); err != nil {
 		return nil, err
 	}
 	return db, nil
