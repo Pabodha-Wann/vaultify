@@ -8,6 +8,7 @@ import (
 
 	"github.com/Pabodha-Wann/vaultify/internal/middleware"
 	"github.com/Pabodha-Wann/vaultify/internal/services"
+	"github.com/go-chi/chi/v5"
 )
 
 type FolderHandler struct {
@@ -91,4 +92,57 @@ func (h *FolderHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(folders)
+}
+
+// PATCH /folders/{id}
+func (h *FolderHandler) Rename(w http.ResponseWriter, r *http.Request) {
+	ownerID, err := h.getOwnerID(r)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	idParam := chi.URLParam(r, "id")
+	folderID, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid folder id", http.StatusBadRequest)
+		return
+	}
+
+	var req createFolderRequest // reusing this struct just for its Name field
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
+		http.Error(w, "name is required", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.folderService.RenameFolder(uint(folderID), ownerID, req.Name); err != nil {
+		http.Error(w, "rename failed", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+
+}
+
+// DELETE /folders/{id}
+func (h *FolderHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	ownerID, err := h.getOwnerID(r)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	idParam := chi.URLParam(r, "id")
+	folderID, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid folder id", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.folderService.DeleteFolder(uint(folderID), ownerID); err != nil {
+		http.Error(w, err.Error(), http.StatusConflict) // 409 -- e.g. folder not empty
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

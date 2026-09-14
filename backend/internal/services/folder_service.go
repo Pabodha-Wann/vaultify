@@ -1,6 +1,8 @@
 package services
 
 import (
+	"fmt"
+
 	"github.com/Pabodha-Wann/vaultify/internal/models"
 	"github.com/Pabodha-Wann/vaultify/internal/repository"
 )
@@ -31,4 +33,19 @@ func (s *FolderService) ListFolders(ownerID uint, parentID *uint) ([]models.Fold
 // GetFolderByID retrieves a single folder by ID for the given owner
 func (s *FolderService) GetFolderByID(id uint, ownerID uint) (models.Folder, error) {
 	return s.folderRepo.FindByID(id, ownerID)
+}
+
+func (s *FolderService) RenameFolder(folderID uint, ownerID uint, newName string) error {
+	return s.folderRepo.Rename(folderID, ownerID, newName)
+}
+
+func (s *FolderService) DeleteFolder(folderID uint, ownerID uint) error {
+	hasContents, err := s.folderRepo.HasContents(folderID)
+	if err != nil {
+		return err
+	}
+	if hasContents {
+		return fmt.Errorf("folder is not empty")
+	}
+	return s.folderRepo.Delete(folderID, ownerID)
 }

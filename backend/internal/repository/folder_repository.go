@@ -35,3 +35,25 @@ func (r *FolderRepository) FindByID(id uint, ownerID uint) (models.Folder, error
 	err := r.db.Where("id = ? AND owner_id = ?", id, ownerID).First(&folder).Error
 	return folder, err
 }
+
+func (r *FolderRepository) Rename(id uint, ownerID uint, newName string) error {
+	return r.db.Model(&models.Folder{}).
+		Where("id = ? AND owner_id = ?", id, ownerID).
+		Update("name", newName).Error
+}
+
+func (r *FolderRepository) Delete(id uint, ownerID uint) error {
+	return r.db.Where("id = ? AND owner_id = ?", id, ownerID).Delete(&models.Folder{}).Error
+}
+
+// HasContents checks if a folder contains any files or subfolders -- used to block deletion of non-empty folders.
+func (r *FolderRepository) HasContents(folderID uint) (bool, error) {
+	var fileCount, folderCount int64
+	if err := r.db.Model(&models.File{}).Where("folder_id = ?", folderID).Count(&fileCount).Error; err != nil {
+		return false, err
+	}
+	if err := r.db.Model(&models.Folder{}).Where("parent_id = ?", folderID).Count(&folderCount).Error; err != nil {
+		return false, err
+	}
+	return fileCount > 0 || folderCount > 0, nil
+}

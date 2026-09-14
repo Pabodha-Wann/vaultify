@@ -62,8 +62,8 @@ func (s *FileService) DownloadFile(ctx context.Context, fileID uint, ownerID uin
 	return file, stream, nil
 }
 
-func (s *FileService) ListFiles(ownerID uint) ([]models.File, error) {
-	return s.fileRepo.ListByOwner(ownerID)
+func (s *FileService) ListFiles(ownerID uint, folderID *uint) ([]models.File, error) {
+	return s.fileRepo.ListByOwner(ownerID, folderID)
 }
 
 func (s *FileService) DeleteFile(ctx context.Context, fileID uint, ownerID uint) error {
@@ -77,4 +77,8 @@ func (s *FileService) DeleteFile(ctx context.Context, fileID uint, ownerID uint)
 	}
 
 	return s.fileRepo.Delete(fileID, ownerID)
+}
+
+func (s *FileService) RenameFile(fileID uint, ownerID uint, newName string) error {
+	return s.fileRepo.Rename(fileID, ownerID, newName)
 }

@@ -76,6 +76,9 @@ func main() {
 		protected.Delete("/files/{id}", fileHandler.Delete)
 		protected.Post("/folders", folderHandler.Create)
 		protected.Get("/folders", folderHandler.List)
+		protected.Patch("/files/{id}", fileHandler.Rename)
+		protected.Patch("/folders/{id}", folderHandler.Rename)
+		protected.Delete("/folders/{id}", folderHandler.Delete)
 
 	})
 

@@ -28,13 +28,26 @@ func (r *FileRepository) FindById(id uint, ownerID uint) (models.File, error) {
 }
 
 // ListByOwner returns all files belonging to a user.
-func (r *FileRepository) ListByOwner(ownerID uint) ([]models.File, error) {
+func (r *FileRepository) ListByOwner(ownerID uint, folderID *uint) ([]models.File, error) {
 	var files []models.File
-	err := r.db.Where("owner_id=?", ownerID).Find(&files).Error
+	query := r.db.Where("owner_id=?", ownerID)
+
+	if folderID == nil {
+		query = query.Where("folder_id IS NULL")
+	} else {
+		query = query.Where("folder_id = ?", *folderID)
+	}
+	err := query.Find(&files).Error
 	return files, err
 }
 
 // removes a file's metadata row, scoped to its owner.
 func (r *FileRepository) Delete(id uint, ownerId uint) error {
 	return r.db.Where("id = ? AND owner_id = ?", id, ownerId).Delete(&models.File{}).Error
+}
+
+func (r *FileRepository) Rename(id uint, ownerID uint, newName string) error {
+	return r.db.Model(&models.File{}).
+		Where("id = ? AND owner_id = ?", id, ownerID).
+		Update("name", newName).Error
 }

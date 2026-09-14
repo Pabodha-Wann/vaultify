@@ -17,6 +17,10 @@ type FileHandler struct {
 	userService *services.UserService
 }
 
+type renameRequest struct {
+	Name string `json:"name"`
+}
+
 func NewFileHandler(fileService *services.FileService, userService *services.UserService) *FileHandler {
 	return &FileHandler{fileService: fileService, userService: userService}
 }
@@ -119,7 +123,18 @@ func (h *FileHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	files, err := h.fileService.ListFiles(ownerID)
+	var folderID *uint
+	if raw := r.URL.Query().Get("folder_id"); raw != "" {
+		id, err := strconv.ParseUint(raw, 10, 64)
+		if err != nil {
+			http.Error(w, "invalid folder_id", http.StatusBadRequest)
+			return
+		}
+		val := uint(id)
+		folderID = &val
+	}
+
+	files, err := h.fileService.ListFiles(ownerID, folderID)
 	if err != nil {
 		http.Error(w, "list files failed", http.StatusInternalServerError)
 		return
@@ -150,4 +165,34 @@ func (h *FileHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// PATCH /files/{id}
+func (h *FileHandler) Rename(w http.ResponseWriter, r *http.Request) {
+	ownerID, err := h.getOwnerID(r)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	idParam := chi.URLParam(r, "id")
+	fileID, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid file id", http.StatusBadRequest)
+		return
+	}
+
+	var req renameRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
+		http.Error(w, "name is required", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.fileService.RenameFile(uint(fileID), ownerID, req.Name); err != nil {
+		http.Error(w, "rename failed", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+
 }
