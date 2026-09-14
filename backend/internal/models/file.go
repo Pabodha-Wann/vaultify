@@ -6,9 +6,9 @@ import "time"
 type File struct {
 	ID          uint   `gorm:"primaryKey"`
 	OwnerID     uint   `gorm:"not null;index"`
-	folderID    *uint  `gorm:"index"`
+	FolderID    *uint  `gorm:"index"`
 	Name        string `gorm:"not null"`
-	Size        int64  `gorm:not null`
+	Size        int64  `gorm:"not null"`
 	ContentType string
 	StorageKey  string `gorm:"not null;uniqueIndex"`
 	CreatedAt   time.Time

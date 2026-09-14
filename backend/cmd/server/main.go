@@ -45,14 +45,17 @@ func main() {
 	// 3. Repositories
 	userRepo := repository.NewUserRepository(db)
 	fileRepo := repository.NewFileRepository(db)
+	folderRepo := repository.NewFolderRepository(db)
 
 	// 4. Services
 	userService := services.NewUserService(userRepo)
 	fileService := services.NewFileService(fileRepo, s3Storage)
+	folderService := services.NewFolderService(folderRepo)
 
 	// 5. Handlers
 	authHandler, err := handlers.NewAuthhandler(context.Background(), cfg, userService)
 	fileHandler := handlers.NewFileHandler(fileService, userService)
+	folderHandler := handlers.NewFolderHandler(folderService, userService)
 
 	// 6. Middleware
 	r.Use(middleware.Logger)
@@ -71,6 +74,8 @@ func main() {
 		protected.Get("/files/{id}/download", fileHandler.Download)
 		protected.Get("/upload-page", handlers.UploadPage)
 		protected.Delete("/files/{id}", fileHandler.Delete)
+		protected.Post("/folders", folderHandler.Create)
+		protected.Get("/folders", folderHandler.List)
 
 	})
 

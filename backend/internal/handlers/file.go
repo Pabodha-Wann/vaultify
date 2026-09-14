@@ -58,8 +58,19 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
+	var folderID *uint
+	if raw := r.FormValue("folder_id"); raw != "" {
+		id, err := strconv.ParseUint(raw, 10, 64)
+		if err != nil {
+			http.Error(w, "invalid folder_id", http.StatusBadRequest)
+			return
+		}
+		val := uint(id)
+		folderID = &val
+	}
+
 	uploaded, err := h.fileService.UploadFile(
-		r.Context(), ownerID, header.Filename, header.Header.Get("Content-Type"), file, header.Size,
+		r.Context(), ownerID, folderID, header.Filename, header.Header.Get("Content-Type"), file, header.Size,
 	)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("upload failed: %v", err), http.StatusInternalServerError)

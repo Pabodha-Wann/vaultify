@@ -24,7 +24,7 @@ func NewFileService(fileRepo *repository.FileRepository, storage *storage.S3Stor
 }
 
 // generate a unique storage key, upload the bytes to S3, then save the metadata row
-func (s *FileService) UploadFile(ctx context.Context, ownerID uint, filename string, contentType string, body io.Reader, size int64) (models.File, error) {
+func (s *FileService) UploadFile(ctx context.Context, ownerID uint, folderID *uint, filename string, contentType string, body io.Reader, size int64) (models.File, error) {
 	storageKey := fmt.Sprintf("%d/%s-%s", ownerID, uuid.New().String(), filename)
 
 	if err := s.storage.Upload(ctx, storageKey, body, contentType); err != nil {
@@ -33,6 +33,7 @@ func (s *FileService) UploadFile(ctx context.Context, ownerID uint, filename str
 
 	file := &models.File{
 		OwnerID:     ownerID,
+		FolderID:    folderID,
 		Name:        filename,
 		Size:        size,
 		ContentType: contentType,
