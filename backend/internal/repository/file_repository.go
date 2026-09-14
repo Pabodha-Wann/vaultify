@@ -51,3 +51,16 @@ func (r *FileRepository) Rename(id uint, ownerID uint, newName string) error {
 		Where("id = ? AND owner_id = ?", id, ownerID).
 		Update("name", newName).Error
 }
+
+func (r *FileRepository) SetShareToken(id uint, ownerID uint, token string) error {
+	return r.db.Model(&models.File{}).
+		Where("id = ? AND owner_id = ?", id, ownerID).
+		Update("share_token", token).Error
+}
+
+// looks up a file by its public share token
+func (r *FileRepository) FindByShareToken(token string) (models.File, error) {
+	var file models.File
+	err := r.db.Where("share_token = ?", token).First(&file).Error
+	return file, err
+}

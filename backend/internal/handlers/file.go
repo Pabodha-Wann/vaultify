@@ -196,3 +196,46 @@ func (h *FileHandler) Rename(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 
 }
+
+// POST /files/{id}/share -- generates (or re-fetches) a share link
+func (h *FileHandler) Share(w http.ResponseWriter, r *http.Request) {
+	ownerID, err := h.getOwnerID(r)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	idParam := chi.URLParam(r, "id")
+	fileID, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid file id", http.StatusBadRequest)
+		return
+	}
+
+	token, err := h.fileService.CreateShareLink(uint(fileID), ownerID)
+	if err != nil {
+		http.Error(w, "failed to create share link", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"share_url": fmt.Sprintf("http://localhost:8080/share/%s", token),
+	})
+}
+
+// GET /share/{token} -- PUBLIC, no auth required, anyone with the link can download
+func (h *FileHandler) DownloadShared(w http.ResponseWriter, r *http.Request) {
+	token := chi.URLParam(r, "token")
+
+	file, stream, err := h.fileService.DownloadByShareToken(r.Context(), token)
+	if err != nil {
+		http.Error(w, "invalid or expired share link", http.StatusNotFound)
+		return
+	}
+	defer stream.Close()
+
+	w.Header().Set("Content-Type", file.ContentType)
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, file.Name))
+	io.Copy(w, stream)
+}

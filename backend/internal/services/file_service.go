@@ -82,3 +82,25 @@ func (s *FileService) DeleteFile(ctx context.Context, fileID uint, ownerID uint)
 func (s *FileService) RenameFile(fileID uint, ownerID uint, newName string) error {
 	return s.fileRepo.Rename(fileID, ownerID, newName)
 }
+
+func (s *FileService) CreateShareLink(fileID uint, ownerID uint) (string, error) {
+	token := uuid.New().String()
+	if err := s.fileRepo.SetShareToken(fileID, ownerID, token); err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
+func (s *FileService) DownloadByShareToken(ctx context.Context, token string) (models.File, io.ReadCloser, error) {
+	file, err := s.fileRepo.FindByShareToken(token)
+	if err != nil {
+		return models.File{}, nil, fmt.Errorf("invalid share link: %w", err)
+	}
+
+	stream, err := s.storage.Download(ctx, file.StorageKey)
+	if err != nil {
+		return models.File{}, nil, fmt.Errorf("download from storage failed: %w", err)
+	}
+
+	return file, stream, nil
+}

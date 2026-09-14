@@ -10,7 +10,8 @@ type File struct {
 	Name        string `gorm:"not null"`
 	Size        int64  `gorm:"not null"`
 	ContentType string
-	StorageKey  string `gorm:"not null;uniqueIndex"`
+	StorageKey  string  `gorm:"not null;uniqueIndex"`
+	ShareToken  *string `gorm:"uniqueIndex"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }

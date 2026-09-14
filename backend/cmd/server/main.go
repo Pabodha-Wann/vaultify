@@ -79,8 +79,12 @@ func main() {
 		protected.Patch("/files/{id}", fileHandler.Rename)
 		protected.Patch("/folders/{id}", folderHandler.Rename)
 		protected.Delete("/folders/{id}", folderHandler.Delete)
+		protected.Post("/files/{id}/share", fileHandler.Share)
 
 	})
+
+	// Public route
+	r.Get("/share/{token}", fileHandler.DownloadShared)
 
 	log.Println("Starting server on :8080")
 
