@@ -37,13 +37,19 @@ func NewS3Storage(ctx context.Context, accessKeyID, secretAccessKey, region, buc
 }
 
 // sends a file's bytes to S3 under the given key
-func (s *S3Storage) Upload(ctx context.Context, key string, body io.Reader, contentType string) error {
-	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket:      aws.String(s.bucketName),
-		Key:         aws.String(key),
-		Body:        body,
-		ContentType: aws.String(contentType),
-	})
+func (s *S3Storage) Upload(ctx context.Context, key string, body io.Reader, size int64, contentType string) error {
+	input := &s3.PutObjectInput{
+		Bucket:        aws.String(s.bucketName),
+		Key:           aws.String(key),
+		Body:          body,
+		ContentLength: aws.Int64(size),
+	}
+	if contentType != "" {
+		input.ContentType = aws.String(contentType)
+	} else {
+		input.ContentType = aws.String("application/octet-stream")
+	}
+	_, err := s.client.PutObject(ctx, input)
 	return err
 }
 

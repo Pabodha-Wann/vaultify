@@ -27,7 +27,11 @@ func NewFileService(fileRepo *repository.FileRepository, storage *storage.S3Stor
 func (s *FileService) UploadFile(ctx context.Context, ownerID uint, folderID *uint, filename string, contentType string, body io.Reader, size int64) (models.File, error) {
 	storageKey := fmt.Sprintf("%d/%s-%s", ownerID, uuid.New().String(), filename)
 
-	if err := s.storage.Upload(ctx, storageKey, body, contentType); err != nil {
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	if err := s.storage.Upload(ctx, storageKey, body, size, contentType); err != nil {
 		return models.File{}, fmt.Errorf("upload to storage failed: %w", err)
 	}
 

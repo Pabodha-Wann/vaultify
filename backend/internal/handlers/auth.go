@@ -20,6 +20,7 @@ type AuthHandler struct {
 	oauthConfig   oauth2.Config
 	verifier      *oidc.IDTokenVerifier
 	sessionSecret string
+	frontendURL   string
 	userService   *services.UserService
 }
 
@@ -53,6 +54,7 @@ func NewAuthhandler(ctx context.Context, cfg config.Config, userService *service
 		oauthConfig:   oauthConfig,
 		verifier:      verifier,
 		sessionSecret: cfg.SessionSecret,
+		frontendURL:   cfg.FrontendURL,
 		userService:   userService,
 	}, nil
 
@@ -132,5 +134,5 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/dashboard", http.StatusFound)
+	http.Redirect(w, r, h.frontendURL+"/dashboard", http.StatusFound)
 }

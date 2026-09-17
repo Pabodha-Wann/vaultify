@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
+	"path/filepath"
 	"strconv"
 
 	"github.com/Pabodha-Wann/vaultify/internal/middleware"
@@ -49,8 +51,8 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//the max amount ParseMultipartForm will buffer in memory before spilling to temp files.
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
+	// The max amount ParseMultipartForm will buffer in memory before spilling to temp files.
+	if err := r.ParseMultipartForm(64 << 20); err != nil {
 		http.Error(w, "failed to parse form", http.StatusBadRequest)
 		return
 	}
@@ -73,15 +75,25 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		folderID = &val
 	}
 
+	contentType := header.Header.Get("Content-Type")
+	if contentType == "" || contentType == "application/octet-stream" {
+		ext := filepath.Ext(header.Filename)
+		if detected := mime.TypeByExtension(ext); detected != "" {
+			contentType = detected
+		} else {
+			contentType = "application/octet-stream"
+		}
+	}
+
 	uploaded, err := h.fileService.UploadFile(
-		r.Context(), ownerID, folderID, header.Filename, header.Header.Get("Content-Type"), file, header.Size,
+		r.Context(), ownerID, folderID, header.Filename, contentType, file, header.Size,
 	)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("upload failed: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	//responding with the new file metadata
+	// Responding with the new file metadata
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(uploaded)
 }
@@ -109,8 +121,21 @@ func (h *FileHandler) Download(w http.ResponseWriter, r *http.Request) {
 
 	defer stream.Close()
 
-	w.Header().Set("Content-Type", file.ContentType)
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, file.Name))
+	contentType := file.ContentType
+	if contentType == "" || contentType == "application/octet-stream" {
+		ext := filepath.Ext(file.Name)
+		if detected := mime.TypeByExtension(ext); detected != "" {
+			contentType = detected
+		}
+	}
+
+	disposition := "inline"
+	if r.URL.Query().Get("download") == "true" {
+		disposition = "attachment"
+	}
+
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`%s; filename="%s"`, disposition, file.Name))
 	io.Copy(w, stream)
 
 }
@@ -235,7 +260,20 @@ func (h *FileHandler) DownloadShared(w http.ResponseWriter, r *http.Request) {
 	}
 	defer stream.Close()
 
-	w.Header().Set("Content-Type", file.ContentType)
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, file.Name))
+	contentType := file.ContentType
+	if contentType == "" || contentType == "application/octet-stream" {
+		ext := filepath.Ext(file.Name)
+		if detected := mime.TypeByExtension(ext); detected != "" {
+			contentType = detected
+		}
+	}
+
+	disposition := "inline"
+	if r.URL.Query().Get("download") == "true" {
+		disposition = "attachment"
+	}
+
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`%s; filename="%s"`, disposition, file.Name))
 	io.Copy(w, stream)
 }

@@ -12,6 +12,7 @@ type Config struct {
 	AsgardeoClientSecret string
 	AsgardeoOrgName      string
 	RedirectURL          string
+	FrontendURL          string
 	SessionSecret        string
 	DatabaseURL          string
 	AWSAccessKeyID       string
@@ -30,6 +31,7 @@ func Load() Config {
 		AsgardeoClientSecret: os.Getenv("ASGARDEO_CLIENT_SECRET"),
 		AsgardeoOrgName:      os.Getenv("ASGARDEO_ORG_NAME"),
 		RedirectURL:          os.Getenv("REDIRECT_URL"),
+		FrontendURL:          os.Getenv("FRONTEND_URL"),
 		SessionSecret:        os.Getenv("SESSION_SECRET"),
 		DatabaseURL:          os.Getenv("DATABASE_URL"),
 		AWSAccessKeyID:       os.Getenv("AWS_ACCESS_KEY_ID"),
